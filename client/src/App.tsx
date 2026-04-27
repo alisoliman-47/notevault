@@ -166,50 +166,68 @@ export function App() {
   return (
     <div className="layout">
       <header className="topbar">
-        <span className="hint">Vault path</span>
-        <input
-          type="text"
-          placeholder="/absolute/path/to/folder"
-          value={vaultPath}
-          onChange={(e) => setVaultPath(e.target.value)}
-        />
-        <button type="button" className="primary" onClick={() => void openVault()}>
-          Open
-        </button>
-        <button type="button" onClick={() => void newNote()} disabled={!vaultOpen}>
-          New note
-        </button>
-        <button type="button" onClick={() => void saveActive()} disabled={!activePath}>
-          Save
-        </button>
-        <button type="button" onClick={() => void deleteActive()} disabled={!activePath}>
-          Delete
-        </button>
-        <span className="hint">⌘/Ctrl+P search · ⌘/Ctrl+S save</span>
-        {error ? <span style={{ color: "var(--danger)" }}>{error}</span> : null}
+        <div className="topbar-brand">
+          <span className="brand-mark">NoteVault</span>
+        </div>
+        <div className="topbar-path">
+          <span className="topbar-label">Vault</span>
+          <input
+            type="text"
+            placeholder="/absolute/path/to/folder"
+            value={vaultPath}
+            onChange={(e) => setVaultPath(e.target.value)}
+            aria-label="Vault folder path"
+          />
+        </div>
+        <div className="topbar-actions">
+          <button type="button" className="btn btn-primary" onClick={() => void openVault()}>
+            Open
+          </button>
+          <button type="button" className="btn" onClick={() => void newNote()} disabled={!vaultOpen}>
+            New note
+          </button>
+          <button type="button" className="btn" onClick={() => void saveActive()} disabled={!activePath}>
+            Save
+          </button>
+          <button type="button" className="btn btn-danger" onClick={() => void deleteActive()} disabled={!activePath}>
+            Delete
+          </button>
+        </div>
+        <span className="topbar-hint">⌘P search · ⌘S save</span>
+        {error ? <span className="topbar-error">{error}</span> : null}
       </header>
 
       <aside className="sidebar">
         {!vaultOpen ? (
-          <p className="hint">Open a vault to list notes.</p>
+          <p className="hint sidebar-empty">Open a vault to list notes.</p>
         ) : (
-          sorted.map((n) => (
-            <div
-              key={n.path}
-              className={`tree-item${n.path === activePath ? " active" : ""}${n.path.includes("/") ? " nested" : ""}`}
-              style={{ paddingLeft: `${0.5 + n.path.split("/").length * 0.4}rem` }}
-              onClick={() => void loadNote(n.path)}
-              title={n.path}
-            >
-              {n.title}
+          <>
+            <div className="sidebar-header">
+              <span className="sidebar-title">Library</span>
+              <span className="sidebar-count">{sorted.length}</span>
             </div>
-          ))
+            <div className="sidebar-scroll">
+              {sorted.map((n) => (
+                <div
+                  key={n.path}
+                  className={`tree-item${n.path === activePath ? " active" : ""}${n.path.includes("/") ? " nested" : ""}`}
+                  style={{ paddingLeft: `${0.5 + n.path.split("/").length * 0.4}rem` }}
+                  onClick={() => void loadNote(n.path)}
+                  title={n.path}
+                >
+                  {n.title}
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </aside>
 
       <main className="main">
         <section className="pane">
-          <h2>Markdown</h2>
+          <div className="pane-header">
+            <h2>Markdown</h2>
+          </div>
           <div className="editor-area">
             <textarea
               value={editor}
@@ -220,7 +238,9 @@ export function App() {
           </div>
         </section>
         <section className="pane" onClick={onWikiClick}>
-          <h2>Preview</h2>
+          <div className="pane-header">
+            <h2>Preview</h2>
+          </div>
           <div className="preview">
             <ReactMarkdown
               urlTransform={urlTransform}
@@ -244,22 +264,27 @@ export function App() {
       </main>
 
       <aside className="backlinks">
-        <h2>Backlinks</h2>
-        {activePath ? (
-          backlinks.length === 0 ? (
-            <p className="hint">None</p>
+        <div className="backlinks-header">
+          <h2>Backlinks</h2>
+          {activePath ? <div className="backlinks-active">{activePath}</div> : null}
+        </div>
+        <div className="backlinks-body">
+          {activePath ? (
+            backlinks.length === 0 ? (
+              <p className="hint">None</p>
+            ) : (
+              <ul>
+                {backlinks.map((b) => (
+                  <li key={b.path} onClick={() => void loadNote(b.path)}>
+                    {b.title}
+                  </li>
+                ))}
+              </ul>
+            )
           ) : (
-            <ul>
-              {backlinks.map((b) => (
-                <li key={b.path} onClick={() => void loadNote(b.path)}>
-                  {b.title}
-                </li>
-              ))}
-            </ul>
-          )
-        ) : (
-          <p className="hint">Open a note</p>
-        )}
+            <p className="hint">Open a note</p>
+          )}
+        </div>
       </aside>
 
       {palette ? (
@@ -271,9 +296,10 @@ export function App() {
           }}
         >
           <div className="palette" role="dialog" aria-label="Search notes">
+            <div className="palette-head">Search vault</div>
             <input
               autoFocus
-              placeholder="Search vault…"
+              placeholder="Type to filter notes…"
               value={paletteQ}
               onChange={(e) => setPaletteQ(e.target.value)}
               onKeyDown={(e) => {
@@ -304,7 +330,7 @@ export function App() {
                     void loadNote(h.path);
                   }}
                 >
-                  <div>{h.path}</div>
+                  <div className="path">{h.path}</div>
                   <div className="snip">{h.snippet}</div>
                 </li>
               ))}

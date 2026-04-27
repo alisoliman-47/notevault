@@ -11,7 +11,7 @@ MIT licensed. This repo includes a **seed vault** under `seed-vault/` (10 core i
 
 | Requirement | Where it lives |
 |-------------|----------------|
-| **Public or invited GitHub repo** + **MIT or Apache-2.0** | Publish this directory as a repo; [LICENSE](./LICENSE) is **MIT** (Apache-2.0 would also satisfy the brief). |
+| **Public or invited GitHub repo** + **MIT or Apache-2.0** | Publish this directory as a repo; [LICENSE](./LICENSE) is **MIT** (Apache-2.0 would also satisfy the brief). After installing [GitHub CLI](https://cli.github.com/) (`brew install gh`), run `gh auth login` once, then **`./scripts/create-github-repo.sh`** from the repo root (optional name: `./scripts/create-github-repo.sh my-repo-name`; default name `notevault`). |
 | **README:** setup, architecture sketch, **BYO-agent snippet**, cuts, broken, next | This file — sections **Setup**, **Architecture**, **BYO agent snippet**, **What was cut**, **What is currently rough / broken**, **What would be built next**. |
 | **Seed vault** (~10 interlinked sample notes, committed) | Folder [`seed-vault/`](./seed-vault/) — hub is `Start Here.md`. |
 | **Demo video** (15–20 min) | Not in-repo; record separately (e.g. Loom) using **Demo checklist** below. |

@@ -3,6 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { VaultService } from "./vault/vault-service.js";
+import { dispatchVaultTool } from "./vault-tool-dispatcher.js";
 
 function jsonResult(data: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
@@ -10,6 +11,12 @@ function jsonResult(data: unknown) {
 
 function errResult(message: string) {
   return { isError: true as const, content: [{ type: "text" as const, text: message }] };
+}
+
+/** Optional nice-to-have: NOTEVAULT_MCP_MODE=readonly blocks create_note / update_note over MCP only. HTTP UI unchanged. */
+function mcpWritesReadOnly(): boolean {
+  const mode = (process.env.NOTEVAULT_MCP_MODE ?? "").trim().toLowerCase();
+  return mode === "readonly" || mode === "read-only";
 }
 
 async function main() {
@@ -22,6 +29,13 @@ async function main() {
   const vault = new VaultService("");
   await vault.setRoot(path.resolve(root));
 
+  const readOnly = mcpWritesReadOnly();
+  if (readOnly) {
+    console.error(
+      "[notevault-mcp] NOTEVAULT_MCP_MODE=readonly — create_note and update_note will return errors.",
+    );
+  }
+
   const server = new McpServer({ name: "notevault", version: "0.1.0" });
 
   server.registerTool(
@@ -30,7 +44,13 @@ async function main() {
       description: "Inventory of all markdown notes (path + title).",
       inputSchema: z.object({}),
     },
-    async (_args) => jsonResult(await vault.listNotes()),
+    async (_args) => {
+      try {
+        return jsonResult(await dispatchVaultTool(vault, { tool: "list_notes" }));
+      } catch (e) {
+        return errResult(e instanceof Error ? e.message : String(e));
+      }
+    },
   );
 
   server.registerTool(
@@ -43,7 +63,7 @@ async function main() {
     },
     async ({ path: rel }) => {
       try {
-        return jsonResult(await vault.readNote(rel));
+        return jsonResult(await dispatchVaultTool(vault, { tool: "read_note", path: rel }));
       } catch (e) {
         return errResult(e instanceof Error ? e.message : String(e));
       }
@@ -53,15 +73,22 @@ async function main() {
   server.registerTool(
     "create_note",
     {
-      description: "Create a new note. Fails if the file already exists.",
+      description: readOnly
+        ? "(Server is read-only.) create_note is disabled via NOTEVAULT_MCP_MODE=readonly."
+        : "Create a new note. Fails if the file already exists.",
       inputSchema: z.object({
         path: z.string(),
         content: z.string(),
       }),
     },
     async ({ path: rel, content }) => {
+      if (readOnly) {
+        return errResult("NOTEVAULT_MCP_MODE is readonly — create_note is disabled for this MCP server.");
+      }
       try {
-        return jsonResult(await vault.createNote(rel, content));
+        return jsonResult(
+          await dispatchVaultTool(vault, { tool: "create_note", path: rel, content }),
+        );
       } catch (e) {
         return errResult(e instanceof Error ? e.message : String(e));
       }
@@ -71,7 +98,9 @@ async function main() {
   server.registerTool(
     "update_note",
     {
-      description: "Replace entire note content, or append to the end.",
+      description: readOnly
+        ? "(Server is read-only.) update_note is disabled via NOTEVAULT_MCP_MODE=readonly."
+        : "Replace entire note content, or append to the end.",
       inputSchema: z.object({
         path: z.string(),
         content: z.string(),
@@ -79,8 +108,18 @@ async function main() {
       }),
     },
     async ({ path: rel, content, mode }) => {
+      if (readOnly) {
+        return errResult("NOTEVAULT_MCP_MODE is readonly — update_note is disabled for this MCP server.");
+      }
       try {
-        return jsonResult(await vault.updateNote(rel, content, mode));
+        return jsonResult(
+          await dispatchVaultTool(vault, {
+            tool: "update_note",
+            path: rel,
+            content,
+            mode,
+          }),
+        );
       } catch (e) {
         return errResult(e instanceof Error ? e.message : String(e));
       }
@@ -96,7 +135,19 @@ async function main() {
         limit: z.number().int().min(1).max(50).optional().default(10),
       }),
     },
-    async ({ query, limit }) => jsonResult(await vault.searchNotes(query, limit ?? 10)),
+    async ({ query, limit }) => {
+      try {
+        return jsonResult(
+          await dispatchVaultTool(vault, {
+            tool: "search_notes",
+            query,
+            limit: limit ?? 10,
+          }),
+        );
+      } catch (e) {
+        return errResult(e instanceof Error ? e.message : String(e));
+      }
+    },
   );
 
   server.registerTool(
@@ -107,7 +158,7 @@ async function main() {
     },
     async ({ path: rel }) => {
       try {
-        return jsonResult(await vault.listBacklinks(rel));
+        return jsonResult(await dispatchVaultTool(vault, { tool: "list_backlinks", path: rel }));
       } catch (e) {
         return errResult(e instanceof Error ? e.message : String(e));
       }

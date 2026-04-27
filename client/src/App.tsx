@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import * as api from "./api";
 import type { NoteMeta, SearchHit } from "./api";
 import { wikiLinksToMarkdown } from "./wiki-md";
 
 const LS_VAULT = "notevault:lastVaultPath";
+
+/** react-markdown strips unknown URL schemes; wiki links must be allowed through. */
+function urlTransform(url: string) {
+  if (url.startsWith("wiki:")) return url;
+  return defaultUrlTransform(url);
+}
 
 function treeFromNotes(notes: NoteMeta[]): NoteMeta[] {
   return [...notes].sort((a, b) => a.path.localeCompare(b.path));
@@ -97,9 +103,16 @@ export function App() {
   const onWikiClick = useCallback(
     async (e: React.MouseEvent) => {
       const a = (e.target as HTMLElement).closest("a");
-      if (!a?.getAttribute("href")?.startsWith("wiki:")) return;
+      const href = a?.getAttribute("href") ?? "";
+      if (!href.startsWith("wiki:")) return;
       e.preventDefault();
-      const raw = decodeURIComponent(a.getAttribute("href")!.slice("wiki:".length));
+      const encoded = href.slice("wiki:".length);
+      let raw: string;
+      try {
+        raw = decodeURIComponent(encoded);
+      } catch {
+        raw = encoded;
+      }
       setError(null);
       try {
         const { path } = await api.openWikiTarget(raw);
@@ -210,6 +223,7 @@ export function App() {
           <h2>Preview</h2>
           <div className="preview">
             <ReactMarkdown
+              urlTransform={urlTransform}
               components={{
                 a: ({ href, children, ...props }) =>
                   href?.startsWith("wiki:") ? (

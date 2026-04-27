@@ -7,8 +7,10 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "mcp": "node dist/mcp-stdio.js",
-    "mcp:dev": "tsx src/mcp-stdio.ts"
+    "mcp": "node mcp-launch.js",
+    "mcp:dev": "tsx src/mcp-stdio.ts",
+    "agent-demo": "node dist/agent-demo.js",
+    "agent-demo:dev": "tsx src/agent-demo.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

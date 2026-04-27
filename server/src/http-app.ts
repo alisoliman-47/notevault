@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
-import type { UpdateMode, VaultService } from "./vault/vault-service.js";
-import { ensureMdExtension } from "./vault/paths.js";
+import { dispatchVaultTool } from "./vault-tool-dispatcher.js";
+import type { NoteMeta, ReadNoteResult, SearchHit, UpdateMode, VaultService } from "./vault/vault-service.js";
 
 export function createHttpApp(vault: VaultService) {
   const app = express();
@@ -16,7 +16,7 @@ export function createHttpApp(vault: VaultService) {
         return;
       }
       await vault.setRoot(root);
-      const notes = await vault.listNotes();
+      const notes = (await dispatchVaultTool(vault, { tool: "list_notes" })) as NoteMeta[];
       res.json({ root: vault.root, noteCount: notes.length });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -30,7 +30,7 @@ export function createHttpApp(vault: VaultService) {
 
   app.get("/api/notes", async (_req, res) => {
     try {
-      const notes = await vault.listNotes();
+      const notes = (await dispatchVaultTool(vault, { tool: "list_notes" })) as NoteMeta[];
       res.json(notes);
     } catch (e) {
       res.status(400).json({ error: String(e) });
@@ -44,7 +44,7 @@ export function createHttpApp(vault: VaultService) {
         res.status(400).json({ error: "query path required" });
         return;
       }
-      const note = await vault.readNote(p);
+      const note = (await dispatchVaultTool(vault, { tool: "read_note", path: p })) as ReadNoteResult;
       res.json(note);
     } catch (e) {
       res.status(404).json({ error: String(e) });
@@ -58,7 +58,11 @@ export function createHttpApp(vault: VaultService) {
         res.status(400).json({ error: "path and content required" });
         return;
       }
-      const created = await vault.createNote(rel, content);
+      const created = (await dispatchVaultTool(vault, {
+        tool: "create_note",
+        path: rel,
+        content,
+      })) as { path: string };
       res.status(201).json(created);
     } catch (e) {
       res.status(400).json({ error: String(e) });
@@ -77,7 +81,12 @@ export function createHttpApp(vault: VaultService) {
         return;
       }
       const m: UpdateMode = mode === "append" ? "append" : "replace";
-      const out = await vault.updateNote(rel, content, m);
+      const out = (await dispatchVaultTool(vault, {
+        tool: "update_note",
+        path: rel,
+        content,
+        mode: m,
+      })) as { path: string };
       res.json(out);
     } catch (e) {
       res.status(400).json({ error: String(e) });
@@ -102,7 +111,11 @@ export function createHttpApp(vault: VaultService) {
     try {
       const q = String(req.query.q ?? "");
       const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 10));
-      const hits = await vault.searchNotes(q, limit);
+      const hits = (await dispatchVaultTool(vault, {
+        tool: "search_notes",
+        query: q,
+        limit,
+      })) as SearchHit[];
       res.json(hits);
     } catch (e) {
       res.status(400).json({ error: String(e) });
@@ -116,7 +129,7 @@ export function createHttpApp(vault: VaultService) {
         res.status(400).json({ error: "query path required" });
         return;
       }
-      const bl = await vault.listBacklinks(ensureMdExtension(p));
+      const bl = (await dispatchVaultTool(vault, { tool: "list_backlinks", path: p })) as NoteMeta[];
       res.json(bl);
     } catch (e) {
       res.status(400).json({ error: String(e) });

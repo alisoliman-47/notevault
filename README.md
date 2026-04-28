@@ -7,6 +7,8 @@ Local-first markdown vault (Obsidian-style) with a **shared vault layer** used b
 
 MIT licensed. This repo includes a **seed vault** under `seed-vault/` (10 core interlinked notes plus optional extras — see **Seed vault** below).
 
+[![CI](https://github.com/alisoliman-47/notevault/actions/workflows/ci.yml/badge.svg)](https://github.com/alisoliman-47/notevault/actions/workflows/ci.yml)
+
 ## Submission deliverables (assignment checklist)
 
 | Requirement | Where it lives |
@@ -15,6 +17,7 @@ MIT licensed. This repo includes a **seed vault** under `seed-vault/` (10 core i
 | **README:** setup, architecture sketch, **BYO-agent snippet**, cuts, broken, next | This file — sections **Setup**, **Architecture**, **BYO agent snippet**, **What was cut**, **What is currently rough / broken**, **What would be built next**. |
 | **Seed vault** (~10 interlinked sample notes, committed) | Folder [`seed-vault/`](./seed-vault/) — hub is `Start Here.md`. |
 | **Demo video** (15–20 min) | Not in-repo; record separately (e.g. Loom) using **Demo checklist** below. |
+| **Tests + CI (extra)** | **`npm test`** — Vitest on the server (`paths`, tool catalog, dispatcher + temp vault). [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) runs **`npm ci` → `npm run build` → `npm test`** on every push and PR. |
 
 ## Setup
 
@@ -28,6 +31,8 @@ npm run dev
 
 - API + MCP code: `http://127.0.0.1:8787` (Express)
 - UI: `http://127.0.0.1:5173` (Vite)
+- **Health:** `GET http://127.0.0.1:8787/api/health` returns JSON `{ ok, service, vault: { open, root } }` (no disk I/O; safe for load balancers).
+- **Verify before submit:** `npm run build && npm test`
 
 In the UI top bar, paste the **absolute path** to a folder (try the repo’s `seed-vault`) and click **Open**.
 
@@ -135,8 +140,10 @@ flowchart LR
 ```
 
 - **Single source of truth:** `server/src/vault/vault-service.ts` implements list/read/create/update/delete, search, backlinks, and wiki open-or-create.
-- **HTTP** (`server/src/http-app.ts`) and **MCP** (`server/src/mcp-stdio.ts`, usually started via `server/mcp-launch.js`) both call the six required vault operations through `server/src/vault-tool-dispatcher.ts` (same code paths as the MCP tool names).
+- **HTTP** (`server/src/http-app.ts`) and **MCP** (`server/src/mcp-stdio.ts`, usually started via `server/mcp-launch.js`) both go through **`server/src/vault-tool-dispatcher.ts`**: the six brief tools map 1:1 to `dispatchVaultTool` cases. The UI-only routes **DELETE `/api/note`** and **POST `/api/wiki/open`** use the same dispatcher (`delete_note` / `open_wiki`). The only other `VaultService` call from Express is **`setRoot`** on **POST `/api/vault`** (folder bootstrap; not an MCP tool).
+- **MCP protocol:** tool `inputSchema` values are Zod objects with `.min(1)` on paths and `.describe()` on fields so generated JSON Schema is explicit for agents. Tool failures use `isError` text; read-only mode returns messages prefixed with **`[READONLY_MCP]`** for easy handling.
 - **Agents:** point MCP hosts at **`mcp-launch.js`** so `dist/` is rebuilt when `src/` changes (see MCP section above).
+- **Regression safety:** automated tests under `server/src/**/*.test.ts` (Vitest); GitHub Actions CI on push/PR (see checklist table).
 
 ## Seed vault
 

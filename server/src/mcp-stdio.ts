@@ -13,6 +13,18 @@ function errResult(message: string) {
   return { isError: true as const, content: [{ type: "text" as const, text: message }] };
 }
 
+function formatToolException(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  return String(e);
+}
+
+const vaultRelPath = z
+  .string()
+  .min(1)
+  .describe(
+    "Path relative to vault root, forward slashes (e.g. Start Here.md). Extension optional for create/update/delete; server normalizes to .md.",
+  );
+
 /** Optional nice-to-have: NOTEVAULT_MCP_MODE=readonly blocks create_note / update_note over MCP only. HTTP UI unchanged. */
 function mcpWritesReadOnly(): boolean {
   const mode = (process.env.NOTEVAULT_MCP_MODE ?? "").trim().toLowerCase();
@@ -48,7 +60,7 @@ async function main() {
       try {
         return jsonResult(await dispatchVaultTool(vault, { tool: "list_notes" }));
       } catch (e) {
-        return errResult(e instanceof Error ? e.message : String(e));
+        return errResult(formatToolException(e));
       }
     },
   );
@@ -58,14 +70,14 @@ async function main() {
     {
       description: "Read full markdown body and parsed frontmatter for a vault-relative path.",
       inputSchema: z.object({
-        path: z.string().describe("Vault-relative path, e.g. Projects/Plan.md"),
+        path: vaultRelPath,
       }),
     },
     async ({ path: rel }) => {
       try {
         return jsonResult(await dispatchVaultTool(vault, { tool: "read_note", path: rel }));
       } catch (e) {
-        return errResult(e instanceof Error ? e.message : String(e));
+        return errResult(formatToolException(e));
       }
     },
   );
@@ -77,20 +89,22 @@ async function main() {
         ? "(Server is read-only.) create_note is disabled via NOTEVAULT_MCP_MODE=readonly."
         : "Create a new note. Fails if the file already exists.",
       inputSchema: z.object({
-        path: z.string(),
-        content: z.string(),
+        path: vaultRelPath,
+        content: z.string().describe("Full markdown for the new file; empty string is allowed."),
       }),
     },
     async ({ path: rel, content }) => {
       if (readOnly) {
-        return errResult("NOTEVAULT_MCP_MODE is readonly — create_note is disabled for this MCP server.");
+        return errResult(
+          "[READONLY_MCP] NOTEVAULT_MCP_MODE is readonly — create_note is disabled for this MCP server.",
+        );
       }
       try {
         return jsonResult(
           await dispatchVaultTool(vault, { tool: "create_note", path: rel, content }),
         );
       } catch (e) {
-        return errResult(e instanceof Error ? e.message : String(e));
+        return errResult(formatToolException(e));
       }
     },
   );
@@ -102,14 +116,19 @@ async function main() {
         ? "(Server is read-only.) update_note is disabled via NOTEVAULT_MCP_MODE=readonly."
         : "Replace entire note content, or append to the end.",
       inputSchema: z.object({
-        path: z.string(),
-        content: z.string(),
-        mode: z.enum(["replace", "append"]).default("replace"),
+        path: vaultRelPath,
+        content: z.string().describe("For replace: full new body. For append: text concatenated after existing file."),
+        mode: z
+          .enum(["replace", "append"])
+          .default("replace")
+          .describe("replace overwrites the file; append adds content to the end (file created if missing)."),
       }),
     },
     async ({ path: rel, content, mode }) => {
       if (readOnly) {
-        return errResult("NOTEVAULT_MCP_MODE is readonly — update_note is disabled for this MCP server.");
+        return errResult(
+          "[READONLY_MCP] NOTEVAULT_MCP_MODE is readonly — update_note is disabled for this MCP server.",
+        );
       }
       try {
         return jsonResult(
@@ -121,7 +140,7 @@ async function main() {
           }),
         );
       } catch (e) {
-        return errResult(e instanceof Error ? e.message : String(e));
+        return errResult(formatToolException(e));
       }
     },
   );
@@ -131,8 +150,19 @@ async function main() {
     {
       description: "Ranked full-text search over note bodies with short snippets.",
       inputSchema: z.object({
-        query: z.string(),
-        limit: z.number().int().min(1).max(50).optional().default(10),
+        query: z
+          .string()
+          .describe(
+            "Space-separated terms; all must appear in the note body (case-insensitive). Empty string returns no hits.",
+          ),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(50)
+          .optional()
+          .default(10)
+          .describe("Maximum number of hits to return (1–50)."),
       }),
     },
     async ({ query, limit }) => {
@@ -145,7 +175,7 @@ async function main() {
           }),
         );
       } catch (e) {
-        return errResult(e instanceof Error ? e.message : String(e));
+        return errResult(formatToolException(e));
       }
     },
   );
@@ -154,13 +184,15 @@ async function main() {
     "list_backlinks",
     {
       description: "Notes that link to the given note via [[wiki links]] resolving to this path.",
-      inputSchema: z.object({ path: z.string() }),
+      inputSchema: z.object({
+        path: vaultRelPath.describe("Note whose inbound [[wiki links]] you want listed."),
+      }),
     },
     async ({ path: rel }) => {
       try {
         return jsonResult(await dispatchVaultTool(vault, { tool: "list_backlinks", path: rel }));
       } catch (e) {
-        return errResult(e instanceof Error ? e.message : String(e));
+        return errResult(formatToolException(e));
       }
     },
   );

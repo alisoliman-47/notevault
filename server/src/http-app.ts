@@ -8,6 +8,16 @@ export function createHttpApp(vault: VaultService) {
   app.use(cors());
   app.use(express.json({ limit: "10mb" }));
 
+  /** Liveness for humans, CI, and reverse proxies — does not touch the filesystem. */
+  app.get("/api/health", (_req, res) => {
+    const root = vault.root;
+    res.json({
+      ok: true,
+      service: "notevault",
+      vault: { open: Boolean(root), root: root || null },
+    });
+  });
+
   app.post("/api/vault", async (req, res) => {
     try {
       const { path: root } = req.body as { path?: string };
@@ -100,7 +110,7 @@ export function createHttpApp(vault: VaultService) {
         res.status(400).json({ error: "query path required" });
         return;
       }
-      await vault.deleteNote(p);
+      await dispatchVaultTool(vault, { tool: "delete_note", path: p });
       res.status(204).end();
     } catch (e) {
       res.status(400).json({ error: String(e) });
@@ -143,7 +153,10 @@ export function createHttpApp(vault: VaultService) {
         res.status(400).json({ error: "target required" });
         return;
       }
-      const path = await vault.openOrCreateFromWiki(target);
+      const { path } = (await dispatchVaultTool(vault, {
+        tool: "open_wiki",
+        target,
+      })) as { path: string };
       res.json({ path });
     } catch (e) {
       res.status(400).json({ error: String(e) });

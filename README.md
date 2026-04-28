@@ -162,11 +162,15 @@ Use **`server/mcp-launch.js`** as the MCP entry (see above) so `dist/` is rebuil
 ## Human UI (assignment scope)
 
 - Open vault by absolute path, sidebar file list, markdown editor + live preview
+- Preview uses **GitHub-flavored Markdown** (tables, task lists, strikethrough, etc.) via `remark-gfm`, with custom handling so `[[Wiki links]]` still resolve as `wiki:` links in the preview
 - `[[Wiki links]]` in preview (click opens or creates stub)
 - Backlinks panel for the active note
-- **⌘/Ctrl+P** search palette (full-text)
-- **⌘/Ctrl+S** save
+- **⌘/Ctrl+P** search palette (full-text), **⌘/Ctrl+S** save
+- Basic **accessibility**: landmark roles/labels, list semantics for the note list, keyboard **Enter** / **Space** on notes and backlinks, labeled editor and command palette
+- **`prefers-reduced-motion`**: palette entrance animation and short UI transitions are toned down when the OS requests reduced motion
 - Explicitly **not** built: graph view, tags, themes
+
+The browser client (`client/src/api.ts`) surfaces HTTP error bodies even when the response is not JSON (plain text or HTML), so failed opens/saves are easier to debug.
 
 ## What was cut (and why)
 

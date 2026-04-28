@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
-import { ensureMdExtension, normalizeVaultPath, toFsPath } from "./paths.js";
+import { ensureMdExtension, toFsPath } from "./paths.js";
 import { extractWikiTargets, titleFromPath } from "./wiki.js";
 
 export type UpdateMode = "replace" | "append";

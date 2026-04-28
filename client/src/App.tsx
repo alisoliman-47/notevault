@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
+import remarkGfm from "remark-gfm";
 import * as api from "./api";
 import type { NoteMeta, SearchHit } from "./api";
 import { wikiLinksToMarkdown } from "./wiki-md";
@@ -165,7 +166,7 @@ export function App() {
 
   return (
     <div className="layout">
-      <header className="topbar">
+      <header className="topbar" role="banner">
         <div className="topbar-brand">
           <span className="brand-mark">NoteVault</span>
         </div>
@@ -197,7 +198,7 @@ export function App() {
         {error ? <span className="topbar-error">{error}</span> : null}
       </header>
 
-      <aside className="sidebar">
+      <aside className="sidebar" aria-label="Note library">
         {!vaultOpen ? (
           <p className="hint sidebar-empty">Open a vault to list notes.</p>
         ) : (
@@ -206,13 +207,22 @@ export function App() {
               <span className="sidebar-title">Library</span>
               <span className="sidebar-count">{sorted.length}</span>
             </div>
-            <div className="sidebar-scroll">
+            <div className="sidebar-scroll" role="list" aria-label="Notes">
               {sorted.map((n) => (
                 <div
                   key={n.path}
+                  role="listitem"
+                  tabIndex={0}
                   className={`tree-item${n.path === activePath ? " active" : ""}${n.path.includes("/") ? " nested" : ""}`}
                   style={{ paddingLeft: `${0.5 + n.path.split("/").length * 0.4}rem` }}
+                  aria-current={n.path === activePath ? "true" : undefined}
                   onClick={() => void loadNote(n.path)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      void loadNote(n.path);
+                    }
+                  }}
                   title={n.path}
                 >
                   {n.title}
@@ -234,6 +244,7 @@ export function App() {
               onChange={(e) => setEditor(e.target.value)}
               placeholder={activePath ? "" : "Select a note"}
               spellCheck={false}
+              aria-label={activePath ? `Edit ${activePath}` : "Markdown editor"}
             />
           </div>
         </section>
@@ -243,6 +254,7 @@ export function App() {
           </div>
           <div className="preview">
             <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
               urlTransform={urlTransform}
               components={{
                 a: ({ href, children, ...props }) =>
@@ -263,7 +275,7 @@ export function App() {
         </section>
       </main>
 
-      <aside className="backlinks">
+      <aside className="backlinks" aria-label="Backlinks">
         <div className="backlinks-header">
           <h2>Backlinks</h2>
           {activePath ? <div className="backlinks-active">{activePath}</div> : null}
@@ -275,7 +287,18 @@ export function App() {
             ) : (
               <ul>
                 {backlinks.map((b) => (
-                  <li key={b.path} onClick={() => void loadNote(b.path)}>
+                  <li
+                    key={b.path}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => void loadNote(b.path)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        void loadNote(b.path);
+                      }
+                    }}
+                  >
                     {b.title}
                   </li>
                 ))}
@@ -295,13 +318,20 @@ export function App() {
             if (e.target === e.currentTarget) setPalette(false);
           }}
         >
-          <div className="palette" role="dialog" aria-label="Search notes">
-            <div className="palette-head">Search vault</div>
+          <div className="palette" role="dialog" aria-modal="true" aria-label="Search notes">
+            <div className="palette-head" id="palette-title">
+              Search vault
+            </div>
             <input
+              id="palette-query"
               autoFocus
               placeholder="Type to filter notes…"
               value={paletteQ}
               onChange={(e) => setPaletteQ(e.target.value)}
+              aria-labelledby="palette-title"
+              aria-controls="palette-results"
+              aria-autocomplete="list"
+              aria-expanded={paletteHits.length > 0}
               onKeyDown={(e) => {
                 if (e.key === "Escape") setPalette(false);
                 if (e.key === "ArrowDown") {
@@ -319,10 +349,12 @@ export function App() {
                 }
               }}
             />
-            <ul>
+            <ul id="palette-results" role="listbox" aria-label="Matching notes">
               {paletteHits.map((h, i) => (
                 <li
                   key={h.path}
+                  role="option"
+                  aria-selected={i === paletteIdx}
                   className={i === paletteIdx ? "sel" : ""}
                   onMouseEnter={() => setPaletteIdx(i)}
                   onClick={() => {

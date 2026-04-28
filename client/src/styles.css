@@ -607,3 +607,17 @@ body {
   color: var(--muted);
   line-height: 1.45;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .palette-backdrop {
+    animation: none;
+  }
+
+  .topbar input[type="text"],
+  .btn,
+  .tree-item,
+  .palette li,
+  .backlinks li {
+    transition: none;
+  }
+}

@@ -1,5 +1,19 @@
 const API = "";
 
+async function parseErrorMessage(res: Response, fallback: string): Promise<string> {
+  const text = (await res.text()).trim();
+  if (!text) return fallback;
+  if (text.startsWith("{") || text.startsWith("[")) {
+    try {
+      const body = JSON.parse(text) as { error?: string };
+      if (typeof body.error === "string" && body.error) return body.error;
+    } catch {
+      /* not JSON */
+    }
+  }
+  return text.length > 500 ? `${text.slice(0, 500)}…` : text;
+}
+
 export interface NoteMeta {
   path: string;
   title: string;
@@ -20,9 +34,7 @@ export interface SearchHit {
 
 async function j<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    const err = (body as { error?: string }).error ?? res.statusText;
-    throw new Error(err);
+    throw new Error(await parseErrorMessage(res, res.statusText));
   }
   return res.json() as Promise<T>;
 }
@@ -73,7 +85,7 @@ export async function updateNote(
 export async function deleteNote(path: string): Promise<void> {
   const q = new URLSearchParams({ path });
   const res = await fetch(`${API}/api/note?${q}`, { method: "DELETE" });
-  if (!res.ok) throw new Error((await res.json().catch(() => ({})) as { error?: string }).error ?? res.statusText);
+  if (!res.ok) throw new Error(await parseErrorMessage(res, res.statusText));
 }
 
 export async function searchNotes(q: string, limit = 10): Promise<SearchHit[]> {

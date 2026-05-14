@@ -9,7 +9,6 @@ MIT licensed. This repo includes a **seed vault** under `seed-vault/` (10 core i
 
 [![CI](https://github.com/alisoliman-47/notevault/actions/workflows/ci.yml/badge.svg)](https://github.com/alisoliman-47/notevault/actions/workflows/ci.yml)
 
-## Submission deliverables (assignment checklist)
 
 | Requirement | Where it lives |
 |-------------|----------------|

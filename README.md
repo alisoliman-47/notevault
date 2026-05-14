@@ -197,10 +197,6 @@ The browser client (`client/src/api.ts`) surfaces HTTP error bodies even when th
 - Graph view (d3-force / cytoscape), embeddings-based semantic MCP search, or agent write log + undo — not started
 
 
-## Demo checklist (15–20 min)
-
-Follow the employer’s timeline: intro → human UI on `seed-vault` → **agent demo (centerpiece)** → code walkthrough of `VaultService` + MCP wiring → cuts / broken / next.
-
 ## License
 
 This project uses the **MIT License** — see [LICENSE](./LICENSE). (The brief also allows **Apache-2.0**; either is fine for submission.)

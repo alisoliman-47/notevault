@@ -196,9 +196,6 @@ The browser client (`client/src/api.ts`) surfaces HTTP error bodies even when th
 - SQLite FTS5 or persistent index + debounced rebuild
 - Graph view (d3-force / cytoscape), embeddings-based semantic MCP search, or agent write log + undo — not started
 
-## Demo video (15–20 min)
-
-Not stored in git. Record with **Loom**, **QuickTime**, or similar: follow **Demo checklist** below; show **human UI** on `seed-vault`, then **agent** (Claude Desktop or `npm run agent-demo -w server`), then a short **code** segment (`vault-tool-dispatcher.ts`, `mcp-stdio.ts`, `VaultService`).
 
 ## Demo checklist (15–20 min)
 
